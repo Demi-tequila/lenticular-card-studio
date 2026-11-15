@@ -1,0 +1,18 @@
+{
+  "app": "LENTICULAR CARD STUDIO",
+  "version": "1.0",
+  "mode": "holographic",
+  "scale": 2,
+  "params": {
+    "lpi": 40,
+    "flip": 12,
+    "depth": 0.25,
+    "foil": 1.00,
+    "stripe": 0.10
+  },
+  "text": {
+    "title": "No.007  Pudding",
+    "rarity": "LEGENDARY",
+    "serial": "No.007 / HOLOGRAPHIC FOIL"
+  }
+}

@@ -1,0 +1,27 @@
+name: Share a preset
+description: Add a parameter set to presets/ so others can load it.
+title: "[preset] "
+labels: ["preset"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Preset name
+      description: Short, lowercase, used as the filename.
+    validations:
+      required: true
+  - type: textarea
+    id: json
+    attributes:
+      label: Preset JSON
+      description: Paste the file from "Export preset (.json)". Keep the app and version fields.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: What it looks like
+      description: Drag in an exported PNG so reviewers can see the result without running it.
+    validations:
+      required: false

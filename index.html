@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LENTICULAR CARD STUDIO — v1.0</title>
+<meta name="description" content="Drop one photo, get a lenticular card. Single HTML file, no build step, no upload.">
+<meta property="og:title" content="LENTICULAR CARD STUDIO — v1.0">
+<meta property="og:description" content="A browser tool for making lenticular card artwork from one photo.">
+<!-- One file, no dependencies. Photos are read locally and never uploaded. -->
+<style>
+:root{
+  --bg:#f4f5f7; --panel:#ffffff; --text:#16181d; --muted:#8a909c; --faint:#a2a8b3;
+  --line:#e3e6ec; --chip:#f7f8fa; --stage:#15171c; --stage-text:#7c8391;
+  --accent:#16181d; --ok-bg:#eaf6ee; --ok:#227a49; --warn:#d9b65a;
+}
+body[data-theme="dark"]{
+  --bg:#101216; --panel:#1a1d23; --text:#f2f3f5; --muted:#9299a6; --faint:#6f7683;
+  --line:#2b3038; --chip:#22262e; --stage:#0b0c0f; --stage-text:#6f7683;
+  --accent:#f2f3f5; --ok-bg:#1a3327; --ok:#6fd39b; --warn:#d9b65a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.app{display:flex;flex-direction:column;min-height:100vh}
+header{
+  height:72px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;background:var(--panel);border-bottom:1px solid var(--line);gap:16px;
+}
+.brand{display:flex;align-items:center;gap:12px;flex:none}
+.brand h1{font-size:18px;font-weight:700;letter-spacing:.6px;white-space:nowrap}
+.brand p{font-size:11px;color:var(--muted);letter-spacing:.4px}
+.logo{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;gap:3px;flex:none}
+body[data-theme="dark"] .logo{background:#f2f3f5}
+.logo i{width:3px;height:16px;border-radius:2px;display:block}
+.topActions{display:flex;align-items:center;gap:10px}
+.badge{display:flex;align-items:center;gap:8px;background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:9px 12px;font-size:12px;font-weight:500;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+button{font-family:inherit;font-size:13px;cursor:pointer;border:0;background:none;color:inherit}
+.btn{background:var(--accent);color:var(--panel);border-radius:8px;padding:11px 18px;font-weight:500;transition:transform .15s ease,opacity .15s ease;white-space:nowrap}
+body[data-theme="dark"] .btn{color:#101216}
+.btn:hover{opacity:.88}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+body[data-theme="dark"] .btn.ghost{color:var(--text)}
+.btn.full{width:100%;display:block}
+.body{display:grid;grid-template-columns:300px minmax(0,1fr) 280px;flex:1;min-height:0}
+aside{background:var(--panel);padding:20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+aside.left{border-right:1px solid var(--line)}
+aside.right{border-left:1px solid var(--line)}
+.sec{font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.6px;margin-top:4px}
+.upload{
+  border:1px dashed var(--line);background:var(--chip);border-radius:12px;height:140px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;text-align:center;padding:0 12px;transition:border-color .15s ease,background .15s ease;
+}
+.upload:hover,.upload.over{border-color:var(--warn);background:var(--ok-bg)}
+.upload svg{opacity:.85}
+.upload strong{font-size:13px;font-weight:500}
+.upload small{font-size:11px;color:var(--muted)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row label{font-size:12px}
+.row output{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);height:20px;cursor:pointer}
+.field{
+  background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:10px 12px;
+  color:var(--text);font-size:13px;width:100%;outline:none;
+}
+.field:focus{border-color:var(--warn)}
+.modes{display:flex;flex-direction:column;gap:8px}
+.mode{
+  border:1px solid var(--line);background:var(--chip);border-radius:8px;padding:11px 12px;
+  text-align:left;font-size:12px;transition:all .15s ease;
+}
+.mode.on{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+body[data-theme="dark"] .mode.on{color:#101216}
+.stage{
+  background:var(--stage);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:24px;padding:32px;overflow:hidden;position:relative;
+}
+.stageLabel{font-size:11px;color:var(--stage-text);letter-spacing:.6px}
+.cardWrap{
+  width:420px;height:600px;max-width:100%;border-radius:20px;position:relative;
+  box-shadow:0 36px 60px rgba(0,0,0,.55),0 12px 24px rgba(0,0,0,.45);
+  transform:perspective(1200px) rotateY(var(--ry,0deg));transition:transform .12s ease-out;
+  cursor:crosshair;flex:none;
+}
+#card{display:block;width:100%;height:100%;border-radius:20px}
+.viewbar{
+  width:420px;max-width:100%;height:40px;border-radius:20px;background:rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:space-between;padding:0 14px;
+  font-size:11px;color:#c9cdd6;cursor:pointer;gap:8px;
+}
+.viewbar b{color:var(--warn);font-weight:500;white-space:nowrap}
+.viewbar span{white-space:nowrap}
+.hint{font-size:11px;color:var(--stage-text);text-align:center;max-width:420px}
+.meta{font-size:12px;color:var(--text)}
+.meta span{color:var(--muted)}
+.note{font-size:11px;color:var(--faint);line-height:1.6}
+.steps{display:flex;flex-direction:column;gap:8px;font-size:12px}
+.status{background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:10px 12px;font-size:11px;font-weight:500}
+.community{display:flex;flex-direction:column;gap:2px}
+.community a{
+  color:var(--text);text-decoration:none;font-size:12px;padding:7px 0;
+  border-bottom:1px solid var(--line);
+}
+.community a:hover{color:var(--ok)}
+footer{
+  min-height:40px;flex:none;background:var(--panel);border-top:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;padding:8px 24px;gap:16px;
+  font-size:11px;color:var(--muted);
+}
+footer a{color:var(--muted);text-decoration:none}
+footer a:hover{color:var(--text)}
+.seg{display:flex;gap:6px}
+.seg button{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:11px;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+body[data-theme="dark"] .seg button.on{color:#101216}
+@media(max-width:1100px){
+  .body{grid-template-columns:1fr}
+  aside{border:0;border-bottom:1px solid var(--line)}
+  .stage{order:-1;padding:24px;min-height:640px}
+  .cardWrap{width:min(420px,86vw);height:auto;aspect-ratio:7/10}
+  .viewbar{width:min(420px,86vw)}
+  header{height:auto;padding:14px 18px;flex-wrap:wrap}
+  .topActions{flex-wrap:wrap}
+  footer{flex-wrap:wrap}
+}
+@media(max-width:520px){
+  .brand h1{font-size:15px}
+  .viewbar{font-size:10px;padding:0 10px}
+  .badge{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo"><i style="background:#ff7ab6"></i><i style="background:#ffd166"></i><i style="background:#7ce0c3"></i><i style="background:#6ea8ff"></i></div>
+      <div><h1>LENTICULAR CARD STUDIO</h1><p data-i18n="tagline">v1.0 · SINGLE FILE / NO DEPENDENCIES</p></div>
+    </div>
+    <div class="topActions">
+      <div class="badge"><span class="dot"></span><span id="badgeText">Ready</span></div>
+      <div class="seg" id="langSeg">
+        <button data-lang="en" class="on">EN</button><button data-lang="zh">中文</button>
+      </div>
+      <button class="btn ghost" id="themeBtn" data-i18n="theme_btn">Theme</button>
+      <button class="btn" id="topExport" data-i18n="export_png">Export PNG</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <aside class="left">
+      <div class="sec" data-i18n="sec01">01 / SOURCE PHOTO</div>
+      <div class="upload" id="upload">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M14 19V6M14 6L9 11M14 6L19 11M5 18v3c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <strong data-i18n="upload_main">Drop a photo here</strong>
+        <small data-i18n="upload_sub">Click to browse, or paste with Ctrl+V</small>
+      </div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <button class="btn ghost full" id="fileB" data-i18n="import_b">Optional: load a second (B) photo</button>
+      <input type="file" id="file2" accept="image/*" hidden>
+      <button class="btn ghost full" id="demoBtn" data-i18n="demo">Try the built-in demo image</button>
+
+      <div class="sec" data-i18n="sec02">02 / LENTICULAR</div>
+      <div class="row"><label for="lpi" data-i18n="l_lpi">Pitch (LPI)</label><output id="lpiV">40</output></div>
+      <input type="range" id="lpi" min="12" max="100" value="40">
+      <div class="row"><label for="flip" data-i18n="l_flip">Flip angle (°)</label><output id="flipV">18</output></div>
+      <input type="range" id="flip" min="0" max="45" value="18">
+      <div class="row"><label for="depth" data-i18n="l_depth">Parallax depth</label><output id="depthV">0.40</output></div>
+      <input type="range" id="depth" min="0" max="100" value="40">
+      <div class="row"><label for="foil" data-i18n="l_foil">Foil / iridescence</label><output id="foilV">0.85</output></div>
+      <input type="range" id="foil" min="0" max="100" value="85">
+      <div class="row"><label for="stripe" data-i18n="l_stripe">Lens contrast</label><output id="stripeV">0.22</output></div>
+      <input type="range" id="stripe" min="0" max="100" value="22">
+
+      <div class="sec" data-i18n="sec03">03 / CARD TEXT</div>
+      <input class="field" id="title" value="No.007  Pudding" maxlength="24">
+      <input class="field" id="rarity" value="LEGENDARY" maxlength="30">
+      <input class="field" id="serial" value="No.007 / 40 LPI LENTICULAR" maxlength="40">
+    </aside>
+
+    <main class="stage" id="stage">
+      <div class="stageLabel" id="stageLabel">LENTICULAR BENCH · 40 LPI</div>
+      <div class="cardWrap" id="cardWrap"><canvas id="card"></canvas></div>
+      <div class="viewbar" id="viewbar">
+        <b id="viewA" data-i18n="view_a">A · straight on</b>
+        <span data-i18n="view_tilt">← move the pointer to tilt →</span>
+        <span id="viewB">B · tilt 18°</span>
+      </div>
+      <div class="hint" data-i18n="hint">Move the pointer over the card, or tilt your phone. On iOS, tap the bar once to allow motion.</div>
+    </main>
+
+    <aside class="right">
+      <div class="sec" data-i18n="sec04">04 / MODE</div>
+      <div class="modes" id="modes">
+        <button class="mode" data-mode="replica" data-i18n="m_replica">Photo replica</button>
+        <button class="mode" data-mode="lenticular" data-i18n="m_lenticular">Two-image lenticular</button>
+        <button class="mode" data-mode="holographic" data-i18n="m_holographic">Single-image holographic</button>
+      </div>
+
+      <div class="sec" data-i18n="sec05">05 / EXPORT</div>
+      <div class="seg" id="scaleSeg">
+        <button data-scale="2" class="on">PNG 2×</button>
+        <button data-scale="3">PNG 3×</button>
+        <button data-scale="1">1×</button>
+      </div>
+      <div class="meta"><span data-i18n="canvas_label">Canvas</span> <b id="dimText">840 × 1200</b></div>
+      <button class="btn ghost full" id="printBtn" data-i18n="print_btn">Export print interlace</button>
+      <button class="btn full" id="generateBtn" data-i18n="generate_btn">Generate &amp; export</button>
+
+      <div class="sec" data-i18n="sec06">06 / NEXT TIME</div>
+      <div class="steps">
+        <div data-i18n="step1">① Drop one photo, or use the demo image</div>
+        <div data-i18n="step2">② The six layers are applied automatically</div>
+        <div data-i18n="step3">③ Export a PNG or a print interlace</div>
+      </div>
+      <div class="status" id="status" data-i18n="st_ready">Ready · 6 layers applied</div>
+      <div class="note" data-i18n="note_main">One photo is enough. The B view is derived from A with a small crop shift and color offset; you can also load a separate B photo.</div>
+
+      <div class="sec" data-i18n="sec07">07 / COMMUNITY</div>
+      <button class="btn ghost full" id="shareBtn" data-i18n="share_btn">Copy share link</button>
+      <button class="btn ghost full" id="presetOut" data-i18n="preset_out">Export preset (.json)</button>
+      <button class="btn ghost full" id="presetIn" data-i18n="preset_in">Import preset</button>
+      <input type="file" id="presetFile" accept="application/json,.json" hidden>
+      <div class="community">
+        <a id="linkGallery" href="https://github.com/Demi-tequila/lenticular-card-studio/discussions" target="_blank" rel="noopener" data-i18n="gallery">Community gallery ↗</a>
+        <a href="https://github.com/Demi-tequila/lenticular-card-studio/issues/new/choose" target="_blank" rel="noopener" data-i18n="issues">Report a bug ↗</a>
+        <a href="https://github.com/Demi-tequila/lenticular-card-studio" target="_blank" rel="noopener" data-i18n="source">Source code ↗</a>
+      </div>
+      <div class="note" data-i18n="note_share">A share link carries settings and card text only. Your photo stays in this browser.</div>
+    </aside>
+  </div>
+
+  <footer>
+    <span id="footParams">Pitch 40 LPI · flip 18° · depth 0.40 · foil 0.85</span>
+    <span><span data-i18n="foot_hint">ONE PHOTO IN · NO UPLOAD · v1.0</span> · <a href="https://github.com/Demi-tequila/lenticular-card-studio" target="_blank" rel="noopener">GitHub</a></span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var W=420,H=600,PAD=8,IW=W-16,IH=H-16,R=14;
+  var P={lpi:40,flip:18,depth:.40,foil:.85,stripe:.22,mode:'replica',scale:2,tilt:0};
+  var MODES=['replica','lenticular','holographic'];
+  var PRESETS={
+    replica:{lpi:40,flip:18,depth:.40,foil:.85,stripe:.22},
+    lenticular:{lpi:60,flip:24,depth:.60,foil:.12,stripe:.34},
+    holographic:{lpi:40,flip:12,depth:.25,foil:1,stripe:.10}
+  };
+  var I18N={
+    en:{
+      tagline:'v1.0 · SINGLE FILE / NO DEPENDENCIES',
+      ready:'Ready',busy:'Working',theme_btn:'Theme',export_png:'Export PNG',
+      sec01:'01 / SOURCE PHOTO',upload_main:'Drop a photo here',
+      upload_sub:'Click to browse, or paste with Ctrl+V',
+      import_b:'Optional: load a second (B) photo',demo:'Try the built-in demo image',
+      sec02:'02 / LENTICULAR',l_lpi:'Pitch (LPI)',l_flip:'Flip angle (°)',
+      l_depth:'Parallax depth',l_foil:'Foil / iridescence',l_stripe:'Lens contrast',
+      sec03:'03 / CARD TEXT',
+      stage_label:'LENTICULAR BENCH',view_a:'A · straight on',
+      view_tilt:'← move the pointer to tilt →',view_b:'B · tilt {flip}°',
+      hint:'Move the pointer over the card, or tilt your phone. On iOS, tap the bar once to allow motion.',
+      sec04:'04 / MODE',m_replica:'Photo replica',m_lenticular:'Two-image lenticular',
+      m_holographic:'Single-image holographic',
+      sec05:'05 / EXPORT',canvas_label:'Canvas',print_btn:'Export print interlace',
+      generate_btn:'Generate & export',
+      sec06:'06 / NEXT TIME',step1:'① Drop one photo, or use the demo image',
+      step2:'② The six layers are applied automatically',
+      step3:'③ Export a PNG or a print interlace',
+      note_main:'One photo is enough. The B view is derived from A with a small crop shift and color offset; you can also load a separate B photo.',
+      sec07:'07 / COMMUNITY',share_btn:'Copy share link',preset_out:'Export preset (.json)',
+      preset_in:'Import preset',gallery:'Community gallery ↗',issues:'Report a bug ↗',
+      source:'Source code ↗',
+      note_share:'A share link carries settings and card text only. Your photo stays in this browser.',
+      foot_hint:'ONE PHOTO IN · NO UPLOAD · v1.0',
+      foot_fmt:'Pitch {lpi} LPI · flip {flip}° · depth {depth} · foil {foil}',
+      d_title:'No.007  Pudding',d_rarity:'LEGENDARY',d_serial:'No.007 / 40 LPI LENTICULAR',
+      ph_main:'Drop a photo',ph_sub:'drop / paste / click',
+      st_ready:'Ready · 6 layers applied',st_gen:'Done · 6 layers applied',
+      st_b:'Done · B photo loaded',st_fail:'Could not read that image. Try another one.',
+      st_export:'Done · PNG exported',
+      st_print:'Done · print interlace exported at {lpi} LPI. Match your lens sheet to this pitch.',
+      st_copied:'Done · share link copied',st_copy_fail:'Copy failed. Copy the address bar instead.',
+      st_preset_out:'Done · preset exported',st_preset_in:'Done · preset loaded',
+      st_bad_json:'That file is not a valid preset JSON.',st_demo:'Done · demo photo applied',
+      st_tilt_ok:'Done · motion tilt enabled',st_tilt_fail:'Motion permission was not granted.'
+    },
+    zh:{
+      tagline:'v1.0 · 单文件 / 零依赖',
+      ready:'已就绪',busy:'处理中',theme_btn:'明暗',export_png:'导出 PNG',
+      sec01:'01 / 素材',upload_main:'拖入照片，自动生成',
+      upload_sub:'也可点击选择 / 直接 Ctrl+V 粘贴',
+      import_b:'可选：导入 B 面照片',demo:'试用示例图（无需照片）',
+      sec02:'02 / 光栅参数',l_lpi:'光栅密度 (LPI)',l_flip:'翻转角度 (°)',
+      l_depth:'视差深度',l_foil:'镭射强度',l_stripe:'柱镜强度',
+      sec03:'03 / 卡面文字',
+      stage_label:'实拍台面 / 柱镜光栅',view_a:'A 面 · 正视',
+      view_tilt:'← 移动鼠标倾斜 →',view_b:'B 面 · 倾斜 {flip}°',
+      hint:'移动鼠标或倾斜手机切换视角。iOS 上点一下上方横条以授权重力感应。',
+      sec04:'04 / 生成模式',m_replica:'实拍复刻',m_lenticular:'双图光栅',
+      m_holographic:'单图全息',
+      sec05:'05 / 导出',canvas_label:'画布',print_btn:'导出打印光栅片',
+      generate_btn:'一键生成并导出',
+      sec06:'06 / 下次怎么用',step1:'① 拖入一张照片，或用示例图',
+      step2:'② 自动套用 6 层光栅材质',
+      step3:'③ 导出 PNG 或打印光栅片',
+      note_main:'一张照片就够：B 面由 A 面做小幅裁切位移与色彩偏移派生，也可以另外导入 B 面照片。',
+      sec07:'07 / 社区',share_btn:'复制分享链接',preset_out:'导出预设 (.json)',
+      preset_in:'导入预设',gallery:'社区作品 ↗',issues:'反馈问题 ↗',
+      source:'源码 ↗',
+      note_share:'分享链接只带参数与卡面文字，照片留在本机浏览器。',
+      foot_hint:'一张照片即可 · 不上传 · v1.0',
+      foot_fmt:'光栅密度 {lpi} LPI · 翻转角 {flip}° · 视差深度 {depth} · 镭射 {foil}',
+      d_title:'No.007  布丁',d_rarity:'传说稀有度 · LEGENDARY',d_serial:'No.007 / 柱镜光栅实拍复刻',
+      ph_main:'导入照片',ph_sub:'拖入 / 粘贴 / 点击选择',
+      st_ready:'已生成 · 6 层材质已自动套用',st_gen:'已生成 · 6 层材质已自动套用',
+      st_b:'已生成 · B 面已导入',st_fail:'图片读取失败，请换一张',
+      st_export:'已生成 · PNG 已导出',
+      st_print:'已生成 · 打印光栅片已导出（{lpi} LPI，请配同规格柱镜片）',
+      st_copied:'已生成 · 分享链接已复制',st_copy_fail:'复制失败，请直接复制地址栏',
+      st_preset_out:'已生成 · 预设已导出',st_preset_in:'已生成 · 预设已导入',
+      st_bad_json:'这个文件不是有效的预设 JSON',st_demo:'已生成 · 示例照片已套用 6 层材质',
+      st_tilt_ok:'已生成 · 已开启倾斜感应',st_tilt_fail:'未获得动作权限'
+    }
+  };
+
+  var lang='en',theme='light',customText=false;
+  var statusKey='st_ready',statusVars=null;
+  var imgA=null,imgB=null;
+  var card=document.getElementById('card'),wrap=document.getElementById('cardWrap');
+  var $=function(id){return document.getElementById(id)};
+  var HASH0=location.hash.slice(1);
+
+  function t(k,v){
+    var s=(I18N[lang]&&I18N[lang][k])||I18N.en[k]||k;
+    if(v)for(var n in v)s=s.split('{'+n+'}').join(v[n]);
+    return s;
+  }
+  function clamp(v,a,b){return v<a?a:(v>b?b:v)}
+  function cover(im,w,h){
+    var ir=im.width/im.height,cr=w/h,sx,sy,sw,sh;
+    if(ir>cr){sh=im.height;sw=sh*cr;sx=(im.width-sw)/2;sy=0}
+    else{sw=im.width;sh=sw/cr;sx=0;sy=(im.height-sh)/2}
+    return [sx,sy,sw,sh];
+  }
+  function rr(ctx,x,y,w,h,r){
+    ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+  }
+  function placeholder(g,w,h){
+    var lg=g.createLinearGradient(0,0,w,h);
+    lg.addColorStop(0,'#f6b49b');lg.addColorStop(.55,'#7c63c9');lg.addColorStop(1,'#2ea9cf');
+    g.fillStyle=lg;g.fillRect(0,0,w,h);
+    g.fillStyle='rgba(22,24,29,.42)';g.font='600 34px -apple-system,"Noto Sans SC",sans-serif';
+    g.textAlign='center';g.textBaseline='middle';g.fillText(t('ph_main'),w/2,h/2);
+    g.font='400 13px -apple-system,"Noto Sans SC",sans-serif';
+    g.fillText(t('ph_sub'),w/2,h/2+34);
+  }
+  // Pre-render A and B once per frame instead of repainting the photo for every lens band.
+  function layer(which,scale){
+    var c=document.createElement('canvas');
+    c.width=Math.ceil(IW*scale);c.height=Math.ceil(IH*scale);
+    var g=c.getContext('2d');g.setTransform(scale,0,0,scale,0,0);
+    var im=which==='A'?imgA:(imgB||imgA);
+    if(!im){placeholder(g,IW,IH);return c}
+    var s=cover(im,IW,IH);
+    if(which==='B'&&!imgB){
+      var shift=Math.min(P.depth*26,s[2]*.07);
+      try{g.filter='saturate('+(1+P.depth*.7)+') hue-rotate('+(P.depth*20)+'deg) brightness('+(1+P.depth*.10)+')'}catch(e){}
+      g.drawImage(im,s[0]+shift,s[1],s[2]-shift,s[3],0,0,IW,IH);
+      try{g.filter='none'}catch(e){}
+    }else{
+      g.drawImage(im,s[0],s[1],s[2],s[3],0,0,IW,IH);
+    }
+    return c;
+  }
+  function paintBase(ctx,scale,A,B){
+    var bands=Math.max(12,Math.round(P.lpi)),bw=IW/bands;
+    if(P.mode==='holographic'){
+      ctx.drawImage(A,0,0,A.width,A.height,PAD,PAD,IW,IH);return;
+    }
+    var sensitivity=P.flip/18;
+    var view=clamp(.5+P.tilt*.5*sensitivity,0,1);
+    for(var i=0;i<bands;i++){
+      var bx=PAD+i*bw,aW=bw*(1-view),bW=bw-aW;
+      if(aW>.2){ctx.drawImage(A,i*bw*scale,0,bw*scale,A.height,bx,PAD,bw,IH)}
+      if(bW>.2){ctx.drawImage(B,(i*bw+aW)*scale,0,bw*scale,B.height,bx+aW,PAD,bw,IH)}
+    }
+  }
+  function paintLens(ctx){
+    if(P.mode==='holographic')return;
+    var bands=Math.max(12,Math.round(P.lpi)),bw=IW/bands,k=P.stripe;
+    for(var i=0;i<bands;i++){
+      var bx=PAD+i*bw;
+      var g=ctx.createLinearGradient(bx,0,bx+bw,0);
+      g.addColorStop(0,'rgba(255,255,255,'+(k*.75)+')');
+      g.addColorStop(.35,'rgba(255,255,255,'+(k*.12)+')');
+      g.addColorStop(.78,'rgba(0,0,0,'+(k*.5)+')');
+      g.addColorStop(1,'rgba(0,0,0,'+(k*.1)+')');
+      ctx.fillStyle=g;ctx.fillRect(bx,PAD,bw,IH);
+    }
+  }
+  function paintFoil(ctx){
+    if(P.mode==='lenticular')return;
+    var s=P.tilt*90;
+    ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=P.foil*.30;
+    var g=ctx.createLinearGradient(PAD-120+s,PAD,PAD+IW+120+s,PAD+IH);
+    var cols=['#ff5a8c','#ffc44d','#a6f35c','#3ce6c8','#4d8bff','#b263ff','#ff5a8c'];
+    for(var i=0;i<cols.length;i++)g.addColorStop(i/(cols.length-1),cols[i]);
+    ctx.fillStyle=g;ctx.fillRect(PAD,PAD,IW,IH);ctx.restore();
+  }
+  function paintSpecular(ctx){
+    var gx=PAD+IW*.32+P.tilt*IW*.30;
+    var g=ctx.createLinearGradient(gx-95,0,gx+95,0);
+    g.addColorStop(0,'rgba(255,255,255,0)');
+    g.addColorStop(.5,'rgba(255,255,255,'+(.20+P.foil*.14)+')');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=g;ctx.fillRect(PAD,PAD,IW,IH);
+  }
+  function paintShade(ctx){
+    var t2=ctx.createLinearGradient(0,PAD,0,PAD+90);
+    t2.addColorStop(0,'rgba(0,0,0,.48)');t2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=t2;ctx.fillRect(PAD,PAD,IW,90);
+    var b=ctx.createLinearGradient(0,PAD+IH*.60,0,PAD+IH);
+    b.addColorStop(0,'rgba(0,0,0,0)');b.addColorStop(1,'rgba(0,0,0,.78)');
+    ctx.fillStyle=b;ctx.fillRect(PAD,PAD+IH*.60,IW,IH*.40);
+  }
+  function paintFrame(ctx){
+    rr(ctx,PAD,PAD,IW,IH,R);ctx.lineWidth=2;ctx.strokeStyle='#d9b65a';ctx.stroke();
+  }
+  function paintText(ctx){
+    var title=$('title').value,rarity=$('rarity').value,serial=$('serial').value;
+    ctx.fillStyle='rgba(12,13,16,.72)';rr(ctx,20,18,168,26,13);ctx.fill();
+    ctx.fillStyle='#ffffff';ctx.font='500 11px Inter,-apple-system,sans-serif';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText('LENTICULAR · '+P.lpi+' LPI',32,31);
+    ctx.fillStyle='rgba(12,13,16,.82)';rr(ctx,326,18,62,26,13);ctx.fill();
+    ctx.textAlign='center';ctx.fillStyle='#ffffff';ctx.font='600 11px Inter,sans-serif';
+    ctx.fillText('A / B',357,31);
+    ctx.textAlign='left';ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=12;
+    ctx.fillStyle='#ffffff';ctx.font='700 34px -apple-system,"Noto Sans SC","PingFang SC",sans-serif';
+    ctx.fillText(title,28,506);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#e9c46a';ctx.font='500 11px -apple-system,"Noto Sans SC",sans-serif';
+    ctx.fillText(rarity,28,540);
+    ctx.fillStyle='#c9cdd6';ctx.font='400 11px -apple-system,"Noto Sans SC",sans-serif';
+    ctx.fillText(serial,28,560);
+  }
+  function paint(ctx,scale,opts){
+    opts=opts||{};
+    var cv=ctx.canvas,pw=Math.ceil(W*scale),ph=Math.ceil(H*scale);
+    if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}
+    ctx.setTransform(scale,0,0,scale,0,0);
+    ctx.clearRect(0,0,W,H);
+    ctx.save();rr(ctx,0,0,W,H,20);ctx.clip();
+    ctx.fillStyle=opts.print?'#ffffff':'#0c0d10';ctx.fillRect(0,0,W,H);
+    var A=layer('A',scale),B=layer('B',scale);
+    ctx.save();rr(ctx,PAD,PAD,IW,IH,R);ctx.clip();
+    if(opts.print){
+      // Print sheet: fixed 50/50 interlace, no foil, no text, no frame.
+      var bands=Math.max(12,Math.round(P.lpi)),bw=IW/bands;
+      for(var i=0;i<bands;i++){
+        var bx=PAD+i*bw;
+        ctx.drawImage(A,i*bw*scale,0,bw*scale,A.height,bx,PAD,bw/2,IH);
+        ctx.drawImage(B,(i*bw+bw/2)*scale,0,bw*scale,B.height,bx+bw/2,PAD,bw/2,IH);
+      }
+      paintLens(ctx);
+    }else{
+      paintBase(ctx,scale,A,B);paintLens(ctx);paintFoil(ctx);paintSpecular(ctx);paintShade(ctx);
+    }
+    ctx.restore();
+    if(!opts.print){paintFrame(ctx);paintText(ctx)}
+    ctx.restore();
+  }
+  function syncHash(){
+    var q=new URLSearchParams();
+    q.set('lang',lang);q.set('theme',theme);q.set('mode',P.mode);
+    q.set('lpi',P.lpi);q.set('flip',P.flip);
+    q.set('depth',P.depth.toFixed(2));q.set('foil',P.foil.toFixed(2));q.set('stripe',P.stripe.toFixed(2));
+    q.set('scale',P.scale);
+    q.set('title',$('title').value);q.set('rarity',$('rarity').value);q.set('serial',$('serial').value);
+    var s=q.toString();
+    if(location.hash.slice(1)!==s){try{history.replaceState(null,'','#'+s)}catch(e){}}
+  }
+  var pending=false;
+  function render(){
+    if(pending)return;pending=true;
+    requestAnimationFrame(function(){
+      pending=false;
+      paint(card.getContext('2d'),2);
+      wrap.style.setProperty('--ry',(P.tilt*7).toFixed(2)+'deg');
+      syncHash();
+    });
+  }
+  function updateLabels(){
+    $('lpiV').textContent=P.lpi;$('flipV').textContent=P.flip;
+    $('depthV').textContent=P.depth.toFixed(2);$('foilV').textContent=P.foil.toFixed(2);
+    $('stripeV').textContent=P.stripe.toFixed(2);
+    $('footParams').textContent=t('foot_fmt',{lpi:P.lpi,flip:P.flip,depth:P.depth.toFixed(2),foil:P.foil.toFixed(2)});
+    $('dimText').textContent=(W*P.scale)+' × '+(H*P.scale);
+    $('viewB').textContent=t('view_b',{flip:P.flip});
+    $('stageLabel').textContent=t('stage_label')+' · '+P.lpi+' LPI';
+  }
+  function setStatus(k,v){
+    statusKey=k;statusVars=v||null;
+    $('status').textContent=t(k,statusVars);
+    $('badgeText').textContent=(k==='st_busy')?t('busy'):t('ready');
+  }
+  function applyI18n(){
+    document.documentElement.lang=(lang==='zh')?'zh-CN':'en';
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(el){
+      el.textContent=t(el.dataset.i18n);
+    });
+    if(!customText){
+      $('title').value=t('d_title');$('rarity').value=t('d_rarity');$('serial').value=t('d_serial');
+    }
+    [].forEach.call($('langSeg').querySelectorAll('button'),function(b){
+      b.classList.toggle('on',b.dataset.lang===lang);
+    });
+    setStatus(statusKey,statusVars);
+    updateLabels();render();
+  }
+  function markMode(m){
+    [].forEach.call(document.querySelectorAll('.mode'),function(b){b.classList.toggle('on',b.dataset.mode===m)});
+  }
+  function markScale(s){
+    [].forEach.call($('scaleSeg').querySelectorAll('button'),function(b){b.classList.toggle('on',+b.dataset.scale===s)});
+  }
+  function applyState(d){
+    var p=d.params||{};
+    ['lpi','flip','depth','foil','stripe'].forEach(function(k){
+      if(p[k]==null)return;
+      var v=+p[k];if(!isFinite(v))return;
+      if(k==='lpi')v=clamp(Math.round(v),12,100);
+      else if(k==='flip')v=clamp(Math.round(v),0,45);
+      else v=clamp(v,0,1);
+      P[k]=v;$(k).value=(k==='lpi'||k==='flip')?v:Math.round(v*100);
+    });
+    if(d.scale&&[1,2,3].indexOf(+d.scale)>=0){P.scale=+d.scale;markScale(P.scale)}
+    if(d.mode&&MODES.indexOf(d.mode)>=0){P.mode=d.mode;markMode(d.mode)}
+    var tx=d.text||{};
+    ['title','rarity','serial'].forEach(function(k){
+      if(typeof tx[k]==='string'){$(k).value=tx[k].slice(0,40);customText=true}
+    });
+    updateLabels();render();
+  }
+  function applyHash(h){
+    if(!h)return;
+    var q=new URLSearchParams(h),d={params:{},text:{}};
+    ['lpi','flip','depth','foil','stripe'].forEach(function(k){if(q.has(k))d.params[k]=q.get(k)});
+    if(q.has('scale'))d.scale=q.get('scale');
+    if(q.has('mode'))d.mode=q.get('mode');
+    ['title','rarity','serial'].forEach(function(k){if(q.has(k))d.text[k]=q.get(k)});
+    applyState(d);
+    if(q.has('theme')){theme=(q.get('theme')==='dark')?'dark':'light';document.body.dataset.theme=theme}
+  }
+  function applyPreset(mode){
+    P.mode=mode;
+    var p=PRESETS[mode];if(!p)return;
+    for(var k in p){P[k]=p[k];$(k).value=(k==='lpi'||k==='flip')?p[k]:Math.round(p[k]*100)}
+    markMode(mode);updateLabels();render();
+  }
+  function loadFile(file,which){
+    if(!file||!file.type.match(/^image\//))return;
+    var url=URL.createObjectURL(file),im=new Image();
+    im.onload=function(){
+      if(which==='B'){imgB=im;setStatus('st_b')}
+      else{imgA=im;setStatus('st_gen')}
+      render();URL.revokeObjectURL(url);
+    };
+    im.onerror=function(){setStatus('st_fail');URL.revokeObjectURL(url)};
+    im.src=url;
+  }
+  function saveBlob(blob,name){
+    var a=document.createElement('a'),u=URL.createObjectURL(blob);
+    a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(u)},2000);
+  }
+  function download(print){
+    var scale=print?2:P.scale;
+    var out=document.createElement('canvas');
+    out.width=W*scale;out.height=H*scale;
+    paint(out.getContext('2d'),scale,{print:!!print});
+    out.toBlob(function(blob){
+      if(!blob){setStatus('st_fail');return}
+      var base='LENTICULAR-CARD-STUDIO_v1.0_'+P.lpi+'LPI_'+P.mode;
+      saveBlob(blob,(print?base+'_PRINT-INTERLACE':base)+'_'+Date.now()+'.png');
+      setStatus(print?'st_print':'st_export',{lpi:P.lpi});
+    },'image/png');
+  }
+  function copyLink(){
+    var url=location.href;
+    function fallback(){
+      var ta=document.createElement('textarea');
+      ta.value=url;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();
+      var ok=false;try{ok=document.execCommand('copy')}catch(e){}
+      ta.remove();setStatus(ok?'st_copied':'st_copy_fail');
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){setStatus('st_copied')},fallback);
+    }else fallback();
+  }
+  function exportPreset(){
+    var data={
+      app:'LENTICULAR CARD STUDIO',version:'1.0',mode:P.mode,scale:P.scale,
+      params:{lpi:P.lpi,flip:P.flip,depth:+P.depth.toFixed(2),foil:+P.foil.toFixed(2),stripe:+P.stripe.toFixed(2)},
+      text:{title:$('title').value,rarity:$('rarity').value,serial:$('serial').value}
+    };
+    saveBlob(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),
+      'LENTICULAR-CARD-STUDIO_preset_'+P.mode+'_'+Date.now()+'.json');
+    setStatus('st_preset_out');
+  }
+
+  // Events
+  ['lpi','flip','depth','foil','stripe'].forEach(function(k){
+    $(k).addEventListener('input',function(){
+      P[k]=(k==='lpi'||k==='flip')?+this.value:(+this.value/100);
+      updateLabels();render();
+    });
+  });
+  ['title','rarity','serial'].forEach(function(k){
+    $(k).addEventListener('input',function(){customText=true;render()});
+  });
+  $('upload').addEventListener('click',function(){$('file').click()});
+  $('fileB').addEventListener('click',function(){$('file2').click()});
+  $('file').addEventListener('change',function(){loadFile(this.files[0],'A')});
+  $('file2').addEventListener('change',function(){loadFile(this.files[0],'B')});
+  ['dragenter','dragover'].forEach(function(e){document.addEventListener(e,function(ev){ev.preventDefault();$('upload').classList.add('over')})});
+  ['dragleave','drop'].forEach(function(e){document.addEventListener(e,function(ev){ev.preventDefault();if(e==='dragleave'&&ev.relatedTarget)return;$('upload').classList.remove('over')})});
+  document.addEventListener('drop',function(ev){
+    ev.preventDefault();var f=ev.dataTransfer&&ev.dataTransfer.files[0];
+    if(f)loadFile(f,imgA?'B':'A');
+  });
+  document.addEventListener('paste',function(ev){
+    var items=ev.clipboardData&&ev.clipboardData.files;
+    if(items&&items.length)loadFile(items[0],imgA?'B':'A');
+  });
+  wrap.addEventListener('mousemove',function(e){
+    var r=wrap.getBoundingClientRect();
+    P.tilt=clamp(((e.clientX-r.left)/r.width)*2-1,-1,1);render();
+  });
+  wrap.addEventListener('mouseleave',function(){P.tilt=0;render()});
+  window.addEventListener('deviceorientation',function(e){
+    if(e.gamma==null)return;P.tilt=clamp(e.gamma/30,-1,1);render();
+  },{passive:true});
+  $('viewbar').addEventListener('click',function(){
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      DeviceOrientationEvent.requestPermission().then(function(r){
+        setStatus(r==='granted'?'st_tilt_ok':'st_tilt_fail');
+      }).catch(function(){setStatus('st_tilt_fail')});
+    }
+  });
+  $('modes').addEventListener('click',function(e){
+    var b=e.target.closest('.mode');if(b)applyPreset(b.dataset.mode);
+  });
+  $('scaleSeg').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    P.scale=+b.dataset.scale;markScale(P.scale);updateLabels();render();
+  });
+  $('langSeg').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    lang=(b.dataset.lang==='zh')?'zh':'en';
+    try{localStorage.setItem('lcs.lang',lang)}catch(err){}
+    applyI18n();syncHash();
+  });
+  $('themeBtn').addEventListener('click',function(){
+    theme=(theme==='dark')?'light':'dark';
+    document.body.dataset.theme=theme;
+    try{localStorage.setItem('lcs.theme',theme)}catch(err){}
+    syncHash();
+  });
+  $('topExport').addEventListener('click',function(){download(false)});
+  $('generateBtn').addEventListener('click',function(){download(false)});
+  $('printBtn').addEventListener('click',function(){download(true)});
+  $('shareBtn').addEventListener('click',copyLink);
+  $('presetOut').addEventListener('click',exportPreset);
+  $('presetIn').addEventListener('click',function(){$('presetFile').click()});
+  $('presetFile').addEventListener('change',function(){
+    var f=this.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var d=JSON.parse(r.result);
+        if(!d||typeof d!=='object')throw new Error('bad');
+        applyState(d);setStatus('st_preset_in');
+      }catch(err){setStatus('st_bad_json')}
+    };
+    r.readAsText(f);this.value='';
+  });
+
+  // Programmatic demo photo. No network, no external asset.
+  function demoImage(){
+    var c=document.createElement('canvas');c.width=840;c.height=1200;
+    var g=c.getContext('2d'),lg=g.createLinearGradient(0,0,840,1200);
+    lg.addColorStop(0,'#ffd6a5');lg.addColorStop(.48,'#f38ba8');lg.addColorStop(1,'#3d5a98');
+    g.fillStyle=lg;g.fillRect(0,0,840,1200);
+    g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.arc(420,500,220,0,Math.PI*2);g.fill();
+    g.fillStyle='#1b1d24';g.beginPath();g.arc(350,470,32,0,Math.PI*2);g.fill();
+    g.beginPath();g.arc(490,470,32,0,Math.PI*2);g.fill();
+    g.beginPath();g.arc(420,560,60,0,Math.PI);g.strokeStyle='#1b1d24';g.lineWidth=12;g.stroke();
+    g.fillStyle='rgba(255,255,255,.85)';g.font='700 96px sans-serif';g.textAlign='center';
+    g.fillText('DEMO',420,920);
+    var im=new Image();
+    im.onload=function(){imgA=im;setStatus('st_demo');render()};
+    im.src=c.toDataURL('image/png');
+  }
+  $('demoBtn').addEventListener('click',demoImage);
+
+  // Boot
+  var hq=new URLSearchParams(HASH0),sq=new URLSearchParams(location.search);
+  lang=sq.get('lang')||hq.get('lang')||'';
+  try{lang=lang||localStorage.getItem('lcs.lang')||''}catch(e){}
+  lang=(lang==='zh')?'zh':'en';
+  theme=hq.get('theme')||'';
+  try{theme=theme||localStorage.getItem('lcs.theme')||''}catch(e){}
+  theme=(theme==='dark')?'dark':'light';
+  document.body.dataset.theme=theme;
+  applyI18n();
+  applyPreset('replica');
+  applyHash(HASH0);
+  applyI18n();
+  if(sq.get('demo')==='1')demoImage();
+})();
+</script>
+</body>
+</html>

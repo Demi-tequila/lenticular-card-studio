@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Share a card, preset, or print result
+    url: https://github.com/Demi-tequila/lenticular-card-studio/discussions
+    about: Post an exported PNG with its share link, a preset JSON, or notes from a real lens sheet.
+  - name: Ask a question
+    url: https://github.com/Demi-tequila/lenticular-card-studio/discussions
+    about: Usage and printing questions belong in Discussions, not Issues.

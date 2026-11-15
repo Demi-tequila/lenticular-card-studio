@@ -1,0 +1,32 @@
+name: Rendering bug
+description: Something draws wrong, or an export fails.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      description: For example, Safari 18.1 on iOS 18, Chrome 130 on macOS.
+    validations:
+      required: true
+  - type: input
+    id: sharelink
+    attributes:
+      label: Share link
+      description: Click "Copy share link" in the tool and paste the URL here. It carries your settings and card text, but not your photo.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected / what happened
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag an image in here if the Canvas itself is wrong.
+    validations:
+      required: false

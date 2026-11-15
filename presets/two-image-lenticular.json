@@ -1,0 +1,18 @@
+{
+  "app": "LENTICULAR CARD STUDIO",
+  "version": "1.0",
+  "mode": "lenticular",
+  "scale": 2,
+  "params": {
+    "lpi": 60,
+    "flip": 24,
+    "depth": 0.60,
+    "foil": 0.12,
+    "stripe": 0.34
+  },
+  "text": {
+    "title": "No.007  Pudding",
+    "rarity": "LEGENDARY",
+    "serial": "No.007 / TWO-IMAGE FLIP"
+  }
+}

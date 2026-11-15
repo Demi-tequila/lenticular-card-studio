@@ -1,0 +1,18 @@
+{
+  "app": "LENTICULAR CARD STUDIO",
+  "version": "1.0",
+  "mode": "replica",
+  "scale": 2,
+  "params": {
+    "lpi": 40,
+    "flip": 18,
+    "depth": 0.40,
+    "foil": 0.85,
+    "stripe": 0.22
+  },
+  "text": {
+    "title": "No.007  Pudding",
+    "rarity": "LEGENDARY",
+    "serial": "No.007 / 40 LPI LENTICULAR"
+  }
+}
